@@ -26,18 +26,28 @@
 /******************************************************************************
  *                            PID参数
  ******************************************************************************/
-// 云台Yaw电机
-#define YAW_OUTER_KP 13.0f // 外环
-#define YAW_OUTER_KI 0.8f
-#define YAW_OUTER_KD 0.0f
-#define YAW_OUTER_OUT_LIMIT 10.0f
-#define YAW_OUTER_IOUT_LIMIT 1.0f
-#define YAW_INNER_KP 2.8f // 内环
-#define YAW_INNER_KI 0.0f
-#define YAW_INNER_KD 0.0f
-#define YAW_INNER_OUT_LIMIT 10.0f
-#define YAW_INNER_IOUT_LIMIT 0.0f
-#define YAW_INNER_LOWPASS_FILTER_PARA 0.8f
+// 云台大Yaw电机
+#define BIG_YAW_OUTER_KP 13.0f // 外环
+#define BIG_YAW_OUTER_KI 0.8f
+#define BIG_YAW_OUTER_KD 0.0f
+#define BIG_YAW_OUTER_INTEGRAL_LIMIT 10.0f
+#define BIG_YAW_OUTER_OUTPUT_LIMIT   1.0f
+#define BIG_YAW_INNER_KP 0.8f // 内环
+#define BIG_YAW_INNER_KI         0.0f
+#define BIG_YAW_INNER_KD         0.0f
+#define BIG_YAW_INNER_OUTPUT_LIMIT  10.0f
+#define BIG_YAW_INNER_INTEGRAL_LIMIT 0.0f
+//云台小Yaw电机
+#define SMALL_YAW_OUTER_KP         13.0f // 外环
+#define SMALL_YAW_OUTER_KI         0.8f
+#define SMALL_YAW_OUTER_KD         0.0f
+#define SMALL_YAW_OUTER_INTEGRAL_LIMIT 10.0f
+#define SMALL_YAW_OUTER_OUTPUT_LIMIT   1.0f
+#define SMALL_YAW_INNER_KP         0.8f // 内环
+#define SMALL_YAW_INNER_KI         0.0f
+#define SMALL_YAW_INNER_KD         0.0f
+#define SMALL_YAW_INNER_OUTPUT_LIMIT  10.0f
+#define SMALL_YAW_INNER_INTEGRAL_LIMIT 0.0f
 // 云台Pitch电机
 #define PITCH_OUTER_KP 15.0f // 外环
 #define PITCH_OUTER_KI 3.0f
@@ -64,6 +74,16 @@
 #define RAMMER_KD 0.0f
 #define RAMMER_OUT_LIMIT 8000.0f
 #define RAMMER_IOUT_LIMIT 1000.0f
+
+/******************************************************************************
+ *                            电机参数
+ ******************************************************************************/
+#define LK_BIG_YAW_MOTOR_ID 1
+#define BIG_YAW_ORIGIN_ENCODER_OFFSET 0
+#define BIG_YAW_GEARBOX_RATIO 6
+#define LK_SMALL_YAW_MOTOR_ID 1
+#define SMALL_YAW_ORIGIN_ENCODER_OFFSET 0
+#define SMALL_YAW_GEARBOX_RATIO 6
 
 /******************************************************************************
  *                            IMU参数

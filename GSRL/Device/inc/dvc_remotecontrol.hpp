@@ -161,11 +161,6 @@ public:
         decodeRxData();
         return applyStickDeadZone(m_leftStickY);
     }
-    fp32 getScrollWheel()
-    {
-        decodeRxData();
-        return applyStickDeadZone(m_scrollWheel);
-    }
     SwitchStatus getRightSwitchStatus()
     {
         if (m_originalRxDataPointer == nullptr) return SWITCH_ERROR;

@@ -31,7 +31,8 @@ extern "C" void imu_task(void *argument)
     TickType_t taskLastWakeTime = xTaskGetTickCount(); // 获取任务开始时间
     while(1)
     {
-        gimbal.imuLoop();
+        // gimbal.imuLoop();
+
         vTaskDelayUntil(&taskLastWakeTime, 1); // 确保任务以定周期1ms运行
     }
 }
