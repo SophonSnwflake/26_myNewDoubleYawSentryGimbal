@@ -11,92 +11,83 @@
  ******************************************************************************
  */
 /* Includes ------------------------------------------------------------------*/
+#include "Define/def_bmi088.h"
+#include "alg_pid.hpp"
 #include "crt_gimbal.hpp"
+#include "dvc_motor.hpp"
+#include "dvc_imu.hpp"
 
 /* Define --------------------------------------------------------------------*/
 /******************************************************************************
  *                            电机相关
  ******************************************************************************/
-/* PID -----------------------------------------*/
-// Yaw
-CascadePID::PIDParam yawOuterParam = {
-    YAW_OUTER_KP,  // Kp
-    YAW_OUTER_KI,  // Ki
-    YAW_OUTER_KD,   // Kd
-    YAW_OUTER_OUT_LIMIT,  // outputLimit
-    YAW_OUTER_IOUT_LIMIT    // intergralLimit
-};
-CascadePID::PIDParam yawInnerParam = {
-    YAW_INNER_KP,  // Kp
-    YAW_INNER_KI,  // Ki
-    YAW_INNER_KD,   // Kd
-    YAW_INNER_OUT_LIMIT,  // outputLimit
-    YAW_INNER_IOUT_LIMIT    // intergralLimit
-};
-LowPassFilter<fp32> yawInnerLPF(YAW_INNER_LOWPASS_FILTER_PARA);
-CascadePID yawPID(yawOuterParam, yawInnerParam, nullptr, &yawInnerLPF);
-// Pitch
-CascadePID::PIDParam pitchOuterParam = {
-    PITCH_OUTER_KP,  // Kp
-    PITCH_OUTER_KI,  // Ki
-    PITCH_OUTER_KD,   // Kd
-    PITCH_OUTER_OUT_LIMIT,  // outputLimit
-    PITCH_OUTER_IOUT_LIMIT    // intergralLimit
-};
-CascadePID::PIDParam pitchInnerParam = {
-    PITCH_INNER_KP,  // Kp
-    PITCH_INNER_KI,  // Ki
-    PITCH_INNER_KD,   // Kd
-    PITCH_INNER_OUT_LIMIT,  // outputLimit
-    PITCH_INNER_IOUT_LIMIT    // intergralLimit
-};
-LowPassFilter<fp32> pitchInnerLPF(PITCH_INNER_LOWPASS_FILTER_PARA);
-CascadePID pitchPID(pitchOuterParam, pitchInnerParam, nullptr, &pitchInnerLPF);
-// Friction
-SimplePID::PIDParam frictionPIDParam = {
-    FRICTION_KP,  // Kp
-    FRICTION_KI,  // Ki
-    FRICTION_KD,   // Kd
-    FRICTION_OUT_LIMIT,  // outputLimit
-    FRICTION_IOUT_LIMIT    // intergralLimit
-};
-SimplePID leftFrictionPID(SimplePID::PID_POSITION, frictionPIDParam);
-SimplePID rightFrictionPID(SimplePID::PID_POSITION, frictionPIDParam);
-// Rammer
-SimplePID::PIDParam rammerPIDParam = {
-    RAMMER_KP,  // Kp
-    RAMMER_KI,  // Ki
-    RAMMER_KD,   // Kd
-    RAMMER_OUT_LIMIT,  // outputLimit
-    RAMMER_IOUT_LIMIT    // intergralLimit
-};
-SimplePID rammerPID(SimplePID::PID_POSITION, rammerPIDParam);
+/* PID ---------------------------------------------*/
+CascadePID ::PIDParam bigYawOuterAnglePIDParam = { // 大yawPID参数
+    BIG_YAW_OUTER_KP,
+    BIG_YAW_OUTER_KI,
+    BIG_YAW_OUTER_KD,
+    BIG_YAW_OUTER_OUTPUT_LIMIT,
+    BIG_YAW_OUTER_INTEGRAL_LIMIT};
+
+CascadePID ::PIDParam bigYawInnerSpeedPIDParam = {
+
+    BIG_YAW_INNER_KP,
+    BIG_YAW_INNER_KI,
+    BIG_YAW_INNER_KD,
+    BIG_YAW_INNER_OUTPUT_LIMIT,
+    BIG_YAW_INNER_INTEGRAL_LIMIT};
+
+CascadePID ::PIDParam smallYawOuterAnglePIDParam = {
+    // 小yawPID参数
+    SMALL_YAW_OUTER_KP,
+    SMALL_YAW_OUTER_KI,
+    SMALL_YAW_OUTER_KD,
+    SMALL_YAW_OUTER_OUTPUT_LIMIT,
+    SMALL_YAW_OUTER_INTEGRAL_LIMIT};
+CascadePID ::PIDParam smallYawInnerSpeedPIDParam = {
+    SMALL_YAW_INNER_KP,
+    SMALL_YAW_INNER_KI,
+    SMALL_YAW_INNER_KD,
+    SMALL_YAW_INNER_OUTPUT_LIMIT,
+    SMALL_YAW_INNER_INTEGRAL_LIMIT};
+
+CascadePID bigYawPID(bigYawOuterAnglePIDParam, bigYawInnerSpeedPIDParam, nullptr, nullptr);
+CascadePID smallYawPID(smallYawOuterAnglePIDParam, smallYawInnerSpeedPIDParam, nullptr, nullptr);
 
 /* Motor ---------------------------------------------*/
-MotorDM4310 yawMotor(1, 0, 3.141593f, 40, 15, &yawPID);
-MotorDM4310 pitchMotor(3, 2, 3.141593f, 40, 15, &pitchPID);
-MotorM2006 rammerMotor(7, &rammerPID, 0, 36);
-MotorM3508 leftFrictionMotor(1, &leftFrictionPID);
-MotorM3508 rightFrictionMotor(3, &rightFrictionPID);
+MotorLKMG bigYawMotor(LK_BIG_YAW_MOTOR_ID,&bigYawPID,BIG_YAW_ORIGIN_ENCODER_OFFSET, BIG_YAW_GEARBOX_RATIO);
+MotorLKMG smallYawMotor(LK_SMALL_YAW_MOTOR_ID, &smallYawPID, SMALL_YAW_ORIGIN_ENCODER_OFFSET, SMALL_YAW_GEARBOX_RATIO);
 
 /******************************************************************************
  *                            IMU相关
  ******************************************************************************/
-// AHRS算法
-Mahony ahrs(AHRS_AUTO_FREQ, AHRS_DEFAULT_FILTER, MAHONY_KP, MAHONY_KI);
-// IMU校准数据
+Kalman_Quaternion_EKF myahrs(
+ 0.0f, // 给定刷新频率，给0则为自动识别频率
+ 10.0f, // Q的四元数过程噪声基准
+ 0.001f, // Q的零偏过程噪声基准
+ 1e7f, // R，线加速度计噪声基准
+ 0.0f, // 加速度计一阶低通滤波系数（0~1，越小滤得越重），默认0
+ 1 // 是否使用卡方检验（卡方检验阈值请使用类内函数接口来设定）
+);
+
+// 初始化IMU
 BMI088::CalibrationInfo cali = {
-    {GYRO_OFFSET_X, GYRO_OFFSET_Y, GYRO_OFFSET_Z}, // gyroOffset
-    {ACCEL_OFFSET_X, ACCEL_OFFSET_Y, ACCEL_OFFSET_Z}, // accelOffset
-    {MAG_OFFSET_X, MAG_OFFSET_Y, MAG_OFFSET_Z},  // magnetOffset
-    {INSTALL_SPIN_MATRIX} // installSpinMatrix
-};
-// IMU类定义
-BMI088 imu(&ahrs, {&hspi1, GPIOA, GPIO_PIN_4}, {&hspi1, GPIOB, GPIO_PIN_0}, cali);
+ {0.0f, 0.0f, 0.0f}, // gyroOffset
+ {0.0f, 0.0f, 0.0f}, // accelOffset
+ {0.0f, 0.0f, 0.0f}, // magnetOffset
+ {GSRLMath::Matrix33f::MatrixType::IDENTITY}};
 
-// gimbal
-Gimbal gimbal(&yawMotor, &pitchMotor, &rammerMotor, &leftFrictionMotor, &rightFrictionMotor, &imu);
+// BMI088::SPIConfig accel{hspi1, GPIOA, GPIO_PIN_4};
+// BMI088::SPIConfig gyro{hspi1, GPIOB, GPIO_PIN_0};
 
+BMI088 imu(&myahrs,
+           {&hspi1, GPIOA, GPIO_PIN_4},
+           {&hspi1, GPIOB, GPIO_PIN_0},
+           cali,
+           nullptr,  // errorCallback（如果它是函数指针/可为空类型）
+           nullptr); // magnet
+
+Gimbal gimbal(&bigYawMotor, &smallYawMotor, &imu);
 /* Variables -----------------------------------------------------------------*/
 
 /* Function prototypes -------------------------------------------------------*/
@@ -106,10 +97,12 @@ Gimbal gimbal(&yawMotor, &pitchMotor, &rammerMotor, &leftFrictionMotor, &rightFr
 extern "C" void gimbal_task(void *argument)
 {
     TickType_t taskLastWakeTime = xTaskGetTickCount(); // 获取任务开始时间
-    gimbal.init();
+    // gimbal.init();
+    imu.init();
     while(1)
     {
-        gimbal.controlLoop();
+        // gimbal.controlLoop();
+        gimbal.getIMUAttitude();
         vTaskDelayUntil(&taskLastWakeTime, 5); // 确保任务以定周期1ms运行
     }
 }

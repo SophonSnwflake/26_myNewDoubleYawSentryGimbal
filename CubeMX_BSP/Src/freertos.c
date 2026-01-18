@@ -50,7 +50,7 @@ typedef StaticTask_t osStaticThreadDef_t;
 /* USER CODE END Variables */
 /* Definitions for gimbal */
 osThreadId_t gimbalHandle;
-uint32_t gimbalBuffer[ 1024 ];
+uint32_t gimbalBuffer[ 2048 ];
 osStaticThreadDef_t gimbalControlBlock;
 const osThreadAttr_t gimbal_attributes = {
   .name = "gimbal",
