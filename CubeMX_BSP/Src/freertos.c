@@ -62,7 +62,7 @@ const osThreadAttr_t gimbal_attributes = {
 };
 /* Definitions for imu */
 osThreadId_t imuHandle;
-uint32_t imuBuffer[ 128 ];
+uint32_t imuBuffer[ 1024 ];
 osStaticThreadDef_t imuControlBlock;
 const osThreadAttr_t imu_attributes = {
   .name = "imu",

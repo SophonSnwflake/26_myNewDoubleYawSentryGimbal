@@ -21,17 +21,29 @@
 
 /* Variables -----------------------------------------------------------------*/
 extern Gimbal gimbal;
+extern BMI088 imu;
+// extern IMU imu;
 
 /* Function prototypes -------------------------------------------------------*/
 
 /* User code -----------------------------------------------------------------*/
 
+bool OK5 = 0;
+bool OK6 = 0;
+bool OK7 = 0;
+bool OK8 = 0;
+
+
 extern "C" void imu_task(void *argument)
 {
+    OK5 = 1;
     TickType_t taskLastWakeTime = xTaskGetTickCount(); // 获取任务开始时间
-    while(1)
-    {
+    OK6                         = 1;
+    imu.init();
+    while (1) {
+        OK7 = 1;
         gimbal.imuLoop();
+        OK8 = 1;
         vTaskDelayUntil(&taskLastWakeTime, 1); // 确保任务以定周期1ms运行
     }
 }

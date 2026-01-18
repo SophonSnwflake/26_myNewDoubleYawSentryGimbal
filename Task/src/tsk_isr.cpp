@@ -27,7 +27,7 @@ extern Gimbal gimbal;
 /* User code -----------------------------------------------------------------*/
 void dr16RxCallback(uint8_t *Buffer, uint16_t Length)
 {
-    gimbal.receiveRemoteControlDataFromISR(Buffer);
+    // gimbal.receiveRemoteControlDataFromISR(Buffer);
 }
 
 void can1RxCallback(can_rx_message_t *pRxMsg)
@@ -38,5 +38,5 @@ void can1RxCallback(can_rx_message_t *pRxMsg)
 void can2RxCallback(can_rx_message_t *pRxMsg)
 {
     gimbal.receiveGimbalMotorDataFromISR(pRxMsg);
-    gimbal.receiveChassisDataFromISR(pRxMsg);
+    // gimbal.receiveChassisDataFromISR(pRxMsg);
 }
