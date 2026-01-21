@@ -17,6 +17,10 @@
 #include "dvc_motor.hpp"
 #include "dvc_imu.hpp"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846f
+#endif
+
 /* Define --------------------------------------------------------------------*/
 /******************************************************************************
  *                            电机相关
@@ -56,7 +60,7 @@ CascadePID smallYawPID(smallYawOuterAnglePIDParam, smallYawInnerSpeedPIDParam, n
 
 /* Motor ---------------------------------------------*/
 MotorLKMG bigYawMotor(LK_BIG_YAW_MOTOR_ID, &bigYawPID, BIG_YAW_ORIGIN_ENCODER_OFFSET, BIG_YAW_GEARBOX_RATIO);
-MotorLKMG smallYawMotor(LK_SMALL_YAW_MOTOR_ID, &smallYawPID, SMALL_YAW_ORIGIN_ENCODER_OFFSET, SMALL_YAW_GEARBOX_RATIO);
+MotorGM6020 smallYawMotor(LK_SMALL_YAW_MOTOR_ID, &smallYawPID, SMALL_YAW_ORIGIN_ENCODER_OFFSET);
 
 /******************************************************************************
  *                            IMU相关
@@ -94,25 +98,16 @@ Gimbal gimbal(&bigYawMotor, &smallYawMotor, &imu);
 
 /* User code -----------------------------------------------------------------*/
 
-bool OK1 = 0;
-bool OK2 = 0;
-bool OK3 = 0;
-bool OK4 = 0;
-
+fp32 Angle;
 
 extern "C" void gimbal_task(void *argument)
 {
     TickType_t taskLastWakeTime = xTaskGetTickCount(); // 获取任务开始时间
-    // gimbal.init();
-    OK1 = 1;
-    // imu.init();
-    OK2 = 1;
-    while (1) {
-        // gimbal.controlLoop();
-        OK3 = 1;
-        // gimbal.imuLoop();
-        // gimbal.getIMUAttitude();
-        vTaskDelayUntil(&taskLastWakeTime, 5); // 确保任务以定周期1ms运行
-        OK4 = 1;
+    gimbal.init();
+    while (1)
+
+        while (1) {
+        gimbal.controlLoop();
+        vTaskDelayUntil(&taskLastWakeTime, 5); // 确保任务以定周期5ms运行
     }
 }

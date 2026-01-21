@@ -735,6 +735,9 @@ bool MotorLKMG::decodeCanRxMessage(const can_rx_message_t &rxMessage)
 {
     if (rxMessage.header.StdId != m_motorFeedbackMessageID) return false;
 
+    // 保存原始反馈数据
+    memcpy(m_motorFeedbackData, rxMessage.data, sizeof(m_motorFeedbackData));
+
     uint8_t cmd = rxMessage.data[0];
 
     switch (cmd) {

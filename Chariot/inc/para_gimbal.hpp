@@ -27,27 +27,27 @@
  *                            PID参数
  ******************************************************************************/
 // 云台大Yaw电机
-#define BIG_YAW_OUTER_KP             13.0f // 外环
-#define BIG_YAW_OUTER_KI             0.8f
-#define BIG_YAW_OUTER_KD             0.0f
-#define BIG_YAW_OUTER_INTEGRAL_LIMIT 10.0f
-#define BIG_YAW_OUTER_OUTPUT_LIMIT   1.0f
-#define BIG_YAW_INNER_KP             0.8f // 内环
-#define BIG_YAW_INNER_KI             0.0f
-#define BIG_YAW_INNER_KD             0.0f
-#define BIG_YAW_INNER_OUTPUT_LIMIT   10.0f
-#define BIG_YAW_INNER_INTEGRAL_LIMIT 0.0f
+#define BIG_YAW_OUTER_KP             15.0f // 外环
+#define BIG_YAW_OUTER_KI             2.0f
+#define BIG_YAW_OUTER_KD             0
+#define BIG_YAW_OUTER_INTEGRAL_LIMIT 0
+#define BIG_YAW_OUTER_OUTPUT_LIMIT   1000000.0f
+#define BIG_YAW_INNER_KP             8.0f // 内环
+#define BIG_YAW_INNER_KI             1
+#define BIG_YAW_INNER_KD             0
+#define BIG_YAW_INNER_OUTPUT_LIMIT   10000000.0f
+#define BIG_YAW_INNER_INTEGRAL_LIMIT 0
 // 云台小Yaw电机
-#define SMALL_YAW_OUTER_KP             13.0f // 外环
+#define SMALL_YAW_OUTER_KP             10.0f // 外环
 #define SMALL_YAW_OUTER_KI             0.8f
-#define SMALL_YAW_OUTER_KD             0.0f
+#define SMALL_YAW_OUTER_KD             1.0f
 #define SMALL_YAW_OUTER_INTEGRAL_LIMIT 10.0f
-#define SMALL_YAW_OUTER_OUTPUT_LIMIT   1.0f
-#define SMALL_YAW_INNER_KP             0.8f // 内环
+#define SMALL_YAW_OUTER_OUTPUT_LIMIT   100000000000000000000000000000.0f
+#define SMALL_YAW_INNER_KP             550 // 内环
 #define SMALL_YAW_INNER_KI             0.0f
-#define SMALL_YAW_INNER_KD             0.0f
-#define SMALL_YAW_INNER_OUTPUT_LIMIT   10.0f
-#define SMALL_YAW_INNER_INTEGRAL_LIMIT 0.0f
+#define SMALL_YAW_INNER_KD             0.5f
+#define SMALL_YAW_INNER_OUTPUT_LIMIT   1000000000000000000000000.0f
+#define SMALL_YAW_INNER_INTEGRAL_LIMIT 11111110.0f
 // 云台Pitch电机
 #define PITCH_OUTER_KP                  15.0f // 外环
 #define PITCH_OUTER_KI                  3.0f
@@ -80,14 +80,20 @@
  ******************************************************************************/
 #define LK_BIG_YAW_MOTOR_ID             1
 #define BIG_YAW_ORIGIN_ENCODER_OFFSET   0
-#define BIG_YAW_GEARBOX_RATIO           6
-#define LK_SMALL_YAW_MOTOR_ID           1
+#define BIG_YAW_GEARBOX_RATIO           1
+#define LK_SMALL_YAW_MOTOR_ID           2 
 #define SMALL_YAW_ORIGIN_ENCODER_OFFSET 0
-#define SMALL_YAW_GEARBOX_RATIO         6
+#define SMALL_YAW_GEARBOX_RATIO         1
 
 /******************************************************************************
  *                            IMU参数
  ******************************************************************************/
+// IMU校准
+#define CYCYLING_TIMES_FOR_IMU_CALIBRATION 500
+#define SMALL_YAW_ZERO_RAD                 1.4235
+#define RATING_OF_IMU                      0.05f//IMU增长率阈值
+
+
 // Mahony算法参数
 #define AHRS_AUTO_FREQ      0
 #define AHRS_DEFAULT_FILTER 0
@@ -111,7 +117,7 @@
  ******************************************************************************/
 #define DT7_STICK_DEAD_ZONE         0.05f
 #define DT7_STICK_PITCH_SENSITIVITY 0.02f
-#define DT7_STICK_YAW_SENSITIVITY   0.05f
+#define DT7_STICK_YAW_SENSITIVITY   0.2f
 
 /******************************************************************************
  *                            云台角度限制

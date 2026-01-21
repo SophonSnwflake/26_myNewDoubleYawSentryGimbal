@@ -42,8 +42,9 @@ extern "C" void imu_task(void *argument)
     imu.init();
     while (1) {
         OK7 = 1;
-        gimbal.imuLoop();
+        gimbal.imuGetYawAngleLoop();
         OK8 = 1;
-        vTaskDelayUntil(&taskLastWakeTime, 1); // 确保任务以定周期1ms运行
+        osDelay(1);
+        // vTaskDelayUntil(&taskLastWakeTime, 5); // 确保任务以定周期1ms运行
     }
 }
