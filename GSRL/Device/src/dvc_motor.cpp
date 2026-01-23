@@ -376,12 +376,14 @@ int16_t Motor::torqueCurrentClosedloopControl(int16_t targetTorqueCurrent)
  * @param feedBackData 反馈数据数组
  * @param feedBackSize 反馈数据数组大小
  */
-fp32 Motor::externalClosedloopControl(fp32 setPoint, const fp32 *feedBackData, uint8_t feedBackSize)
+fp32 Motor::externalClosedloopControl(fp32 setPoint, const fp32 *feedBackData, uint8_t feedBackSize,fp32 feedForwordData)
 {
     m_controllerOutput = m_controller->controllerCalculate(setPoint, feedBackData, feedBackSize);
+    m_controllerOutput = m_controllerOutput -feedForwordData;
     if (m_controllerOutputPolarity) {
         m_controllerOutput = -m_controllerOutput;
     }
+
     convertControllerOutputToMotorControlData();
     return m_controllerOutput;
 }
@@ -926,4 +928,14 @@ void MotorLKMG::setBrake(bool isBraked)
         m_motorControlData[6] = 0x00;
         m_motorControlData[7] = 0x00;
     }
+}
+
+void Motor::changeControllerOutput(fp32 outputValue)
+{
+    m_controllerOutput = m_controllerOutput - outputValue;
+}
+
+fp32 Motor::getControllerOutput() const
+{
+    return m_controllerOutput;
 }

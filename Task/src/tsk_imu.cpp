@@ -28,23 +28,15 @@ extern BMI088 imu;
 
 /* User code -----------------------------------------------------------------*/
 
-bool OK5 = 0;
-bool OK6 = 0;
-bool OK7 = 0;
-bool OK8 = 0;
+
 
 
 extern "C" void imu_task(void *argument)
 {
-    OK5 = 1;
     TickType_t taskLastWakeTime = xTaskGetTickCount(); // 获取任务开始时间
-    OK6                         = 1;
     imu.init();
     while (1) {
-        OK7 = 1;
         gimbal.imuGetYawAngleLoop();
-        OK8 = 1;
-        osDelay(1);
-        // vTaskDelayUntil(&taskLastWakeTime, 5); // 确保任务以定周期1ms运行
+        vTaskDelayUntil(&taskLastWakeTime,10); // 确保任务以定周期1ms运行
     }
 }

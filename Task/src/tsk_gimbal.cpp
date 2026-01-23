@@ -104,10 +104,9 @@ extern "C" void gimbal_task(void *argument)
 {
     TickType_t taskLastWakeTime = xTaskGetTickCount(); // 获取任务开始时间
     gimbal.init();
-    while (1)
-
-        while (1) {
+    while(1)
+    while (1){
         gimbal.controlLoop();
         vTaskDelayUntil(&taskLastWakeTime, 5); // 确保任务以定周期5ms运行
     }
-}
+    }

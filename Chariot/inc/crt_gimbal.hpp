@@ -19,6 +19,7 @@
 #include "alg_general.hpp"
 #include "dvc_motor.hpp"
 #include "para_gimbal.hpp"
+#include "std_typedef.h"
 #include <cstdint>
 
 /* Exported types ------------------------------------------------------------*/
@@ -78,6 +79,8 @@ public:
     fp32 m_bigYawControlTargetAngle; // 大电机目标角度
     fp32 m_smallYawControlTargetAngle; // 小电机目标角度
     fp32 m_mechDelta;
+    fp32 m_bigYawMotorErrorAngle;
+    fp32 m_smallYawMotorErrorAngle;
 
     // 遥控器
     Dr16RemoteControl m_remoteControl;
@@ -114,7 +117,6 @@ private:
     void calculateContoledAnglesData();
     void calculateAllAnglesData();
 
-    
     // IMU
     void imuInit();
     void imuCalibration();
@@ -122,6 +124,14 @@ private:
 
     // 遥控器
     void getTargetAngleFromRemoteControl();
+
+    // 测试
+    void testForBigYawMotorPID();
+
+
+public:
+    void sendTsetMessageToPC(const uint8_t sbsbsbsbsbsb, fp32 yaw, fp32 pitch, fp32 roll, fp32 djws);
+    void put_le16(uint8_t *p, int16_t v);
     
 
 

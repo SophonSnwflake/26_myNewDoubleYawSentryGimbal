@@ -16,7 +16,11 @@
 #include "alg_general.hpp"
 #include "tsk_isr.hpp"
 #include "drv_misc.h"
+#include <cmath>
+#include <cstdint>
 #include <stdint.h>
+
+extern CascadePID bigYawPID;
 
 /* Typedef -------------------------------------------------------------------*/
 
@@ -65,6 +69,7 @@ void Gimbal::controlLoop()
     imuGetYawAngleLoop();
     getTargetAngleFromRemoteControl();
     yawControl();
+    transmitMotorControlData();
 }
 
 // 云台模式选择
@@ -120,6 +125,7 @@ void Gimbal::yawControl()
         case GIMBAL_NO_FORCE:
             m_smallYawMotor->openloopControl(0);
             m_bigYawMotor->openloopControl(0);
+            calculateAllAnglesData();
             break;
 
         case CALIBRATION:
@@ -131,6 +137,14 @@ void Gimbal::yawControl()
         case MANUAL_CONTROL: {
             calculateAllAnglesData();
             setExternalControlTargetAngle(m_bigYawControlTargetAngle, m_smallYawControlTargetAngle);
+            // testForBigYawMotorPID();
+            fp32 speed = -(imu->getGyro().z);
+            fp32 targetSpeed = bigYawPID.getOuterLoop().pidGetData().output;
+            sendTsetMessageToPC(0xF1, m_targetAngle * 180 / 3.1415926535f, 0, 0, 0);
+            sendTsetMessageToPC(0xF2, m_bigYawRealAngle * 180 / 3.1415926535f, 0, 0, 0);
+            sendTsetMessageToPC(0xF3, targetSpeed, 0, 0, 0); 
+            sendTsetMessageToPC(0xF4, speed, 0, 0, 0);
+
         } break;
         case AUTO_CONTROL: {
             break;
@@ -178,71 +192,79 @@ void Gimbal::calculateBigYawRealAngle()
 
 void Gimbal::calculateContoledAnglesData()
 {
-    // 新目标：小云台尽量快速、精准指向；不再刻意让大云台“尽量不动”
-    // 策略：
-    // 1) 小云台目标 = 期望全局航向（直接指向，最快响应）
-    // 2) 大云台目标主动跟随期望（用一阶方式避免“目标瞬跳”）
-    // 3) 同时对“小相对大”的机械限位做软约束（±60°留安全裕量），必要时强制大云台目标搬运以保护限位
-
     // --- 可调参数 ---
-    const fp32 kRelHalfLimit  = 1.0471975512f; // pi/3 = 60deg（机械半限位）
-    const fp32 kRelMargin     = 0.0872664626f; // 5deg 安全裕量（避免硬怼限位）
+    const fp32 kRelHalfLimit  = 1.0471975512f; // pi/3 = 60deg
+    const fp32 kRelMargin     = 0.0872664626f; // 5deg
     const fp32 kRelSoftLimit  = kRelHalfLimit - kRelMargin;
-    const fp32 kBigFollowGain = 0.10f; // 0~1：越大大云台越积极跟随（与控制周期相关）
-
-    auto wrapPi = [](fp32 a) -> fp32 {
-        return GSRLMath::normalizeDeltaAngle(a);
-    };
+    const fp32 kBigFollowGain = 0.10f;
 
     auto angDiff = [&](fp32 a, fp32 b) -> fp32 {
-        // 最短有符号角差：wrap(a-b) 到 [-pi, pi]
-        return wrapPi(a - b);
+        return GSRLMath::normalizeDeltaAngle(a - b);
     };
-
     auto absf = [](fp32 x) -> fp32 { return (x >= 0.0f) ? x : -x; };
 
     // 输入：期望总云台指向角（全局航向）
-    fp32 yaw_cmd = wrapPi(m_targetAngle);
+    m_targetAngle = GSRLMath::normalizeDeltaAngle(m_targetAngle);
 
     // 测量：上/下部分全局航向角
-    fp32 yaw_small = wrapPi(m_smallYawRealAngle);
-    fp32 yaw_big   = wrapPi(m_bigYawRealAngle);
+    m_smallYawRealAngle = GSRLMath::normalizeDeltaAngle(m_smallYawRealAngle);
+    m_bigYawRealAngle   = GSRLMath::normalizeDeltaAngle(m_bigYawRealAngle);
 
-    // 1) 小云台：直接指向期望（最快、最直）
-    fp32 small_target_global = yaw_cmd;
+    // 1) 小云台：全局期望
+    fp32 small_target_global = m_targetAngle;
 
-    // 2) 大云台：主动跟随期望（不再追求“尽量不动”）
-    //    用静态状态做一阶“目标跟随”，避免上电/突变时目标跳变太猛
+    // 2) 大云台：一阶跟随（不再追求“尽量不动”）
     static bool s_inited     = false;
     static fp32 s_big_target = 0.0f;
     if (!s_inited) {
-        s_big_target = yaw_big; // 从当前位置开始跟随，避免刚开始目标突跳
+        s_big_target = m_bigYawRealAngle;
         s_inited     = true;
     }
 
-    // 2.1 一阶跟随：big_target <- big_target + gain*(cmd - big_target)
-    fp32 e_big   = angDiff(yaw_cmd, s_big_target);
-    s_big_target = wrapPi(s_big_target + kBigFollowGain * e_big);
+    fp32 e_big   = angDiff(m_targetAngle, s_big_target);
+    s_big_target = GSRLMath::normalizeDeltaAngle(s_big_target + kBigFollowGain * e_big);
 
-    // 3) 软限位保护（按“目标相对角”约束）：确保小云台相对大云台的目标不逼近±60°
-    fp32 rel_target = angDiff(small_target_global, s_big_target); // small - big
+    // 3) 目标相对角软限位：small_target_global - big_target
+    fp32 rel_target = angDiff(small_target_global, s_big_target);
     if (absf(rel_target) > kRelSoftLimit) {
-        fp32 sgn = (rel_target >= 0.0f) ? 1.0f : -1.0f;
-        // 强制把 big_target 搬到“刚好让 small 处于软限位边界”处
-        s_big_target = wrapPi(small_target_global - sgn * kRelSoftLimit);
+        fp32 sgn     = (rel_target >= 0.0f) ? 1.0f : -1.0f;
+        s_big_target = GSRLMath::normalizeDeltaAngle(small_target_global - sgn * kRelSoftLimit);
     }
 
-    // 4) 额外安全（按“实际相对角”保护）：万一小云台跟不上/被外力推到限位附近
-    fp32 rel_meas = angDiff(yaw_small, yaw_big); // 实际 small - big
+    // 4) 实际相对角软保护：small_real - big_real
+    fp32 rel_meas = angDiff(m_smallYawRealAngle, m_bigYawRealAngle);
     if (absf(rel_meas) > kRelSoftLimit) {
-        fp32 sgn = (rel_meas >= 0.0f) ? 1.0f : -1.0f;
-        // 让大云台向小云台方向追，尽快把相对角拉回软限位内
-        s_big_target = wrapPi(yaw_small - sgn * kRelSoftLimit);
+        fp32 sgn     = (rel_meas >= 0.0f) ? 1.0f : -1.0f;
+        s_big_target = GSRLMath::normalizeDeltaAngle(m_smallYawRealAngle - sgn * kRelSoftLimit);
     }
 
-    // 输出：写入你工程的控制目标（全局航向目标）
-    setSmallYawTargetAngle(small_target_global);
+    // ============================================================
+    // 关键新增：把“小云台全局目标角”转换成“小Yaw电机编码器目标角”
+    //
+    // 由你提供的关系可得：
+    // rel = small - big = motorEnc - SMALL_YAW_ZERO_RAD
+    // => motorEncTarget = SMALL_YAW_ZERO_RAD + relNeed
+    //
+    // relNeed 为让小云台对地达到 small_target_global 所需夹角：
+    // relNeed = wrap(small_target_global - big_real)
+    // ============================================================
+    fp32 rel_need = angDiff(small_target_global, m_bigYawRealAngle);
+
+    // 为了避免大云台还没跟上时，小云台电机直接顶死限位，这里对 rel_need 做软限位夹紧
+    if (absf(rel_need) > kRelSoftLimit) {
+        fp32 sgn = (rel_need >= 0.0f) ? 1.0f : -1.0f;
+        rel_need = sgn * kRelSoftLimit;
+    }
+
+    // 电机目标角（与 m_smallYawMotorEncoderAngle 同一坐标定义）
+    fp32 small_motor_target =
+        GSRLMath::normalizeDeltaAngle(SMALL_YAW_ZERO_RAD + rel_need);
+
+
+    // 输出：大云台仍用“全局目标角”，小云台改为“小电机角度目标”
+    
     setBigYawTargetAngle(s_big_target);
+    setSmallYawTargetAngle(small_motor_target);
 }
 
 void Gimbal::setSmallYawTargetAngle(const fp32 targetAngle)
@@ -255,6 +277,7 @@ void Gimbal::setBigYawTargetAngle(const fp32 targetAngle)
     m_bigYawControlTargetAngle = targetAngle;
 }
 
+
 /******************************************IMU相关 ******************************************/
 void Gimbal::imuInit()
 {
@@ -265,75 +288,31 @@ void Gimbal::imuInit()
 // IMU校准
 void Gimbal::imuCalibration()
 {
-    // 如果你希望“已校准也允许重新校准”，把这句删掉，
-    // 然后在进入 CALIBRATION 模式时手动 m_isIMUCalibrated = false;
     if (m_isIMUCalibrated) return;
+    static bool started   = false;
+    static uint32_t t0_ms = 0;
 
-    // ===== 可调参数 =====
-    constexpr uint32_t kSettleMs   = 5000; // 静置等待时间：5秒
-    constexpr uint32_t kAvgMs      = 200;  // 取平均时间：200ms
-    constexpr uint32_t kGapResetMs = 200;  // 多久没调用就认为“中断了校准”，自动重置
-
-    enum class State {
-        WAIT_SETTLE,
-        AVERAGING
-    };
-
-    // ===== 保留跨调用状态（但支持“中断自动重置”）=====
-    static bool started     = false;
-    static State state      = State::WAIT_SETTLE;
-    static uint32_t t0_ms   = 0;
-    static uint32_t last_ms = 0;
-    static float sumSin     = 0.0f;
-    static float sumCos     = 0.0f;
+    static uint16_t n   = 0;
+    static float sumSin = 0.0f, sumCos = 0.0f;
 
     const uint32_t now = HAL_GetTick();
 
-    // 如果中间很久没调用（比如你切走模式了），下次回来从头开始计时
-    if (started && (uint32_t)(now - last_ms) > kGapResetMs) {
-        started = false;
-    }
-    last_ms = now;
-
-    // 第一次进入（或被重置后）初始化
     if (!started) {
-        started = true;
-        state   = State::WAIT_SETTLE;
         t0_ms   = now;
-        sumSin  = 0.0f;
-        sumCos  = 0.0f;
-        return; // 本轮只做初始化
+        started = true;
     }
 
-    // 这里用“滤波后的 yaw”。确保 m_originSmallYawAngle 每圈都更新过
-    // 并且 normalizeDeltaAngle 是“返回值版”（你之前就是返回值版）
-    const float yaw = GSRLMath::normalizeDeltaAngle(m_originSmallYawAngle);
-
-    switch (state) {
-        case State::WAIT_SETTLE:
-            // 静置等待：让滤波器先跑热
-            if ((uint32_t)(now - t0_ms) >= kSettleMs) {
-                state  = State::AVERAGING;
-                t0_ms  = now;
-                sumSin = 0.0f;
-                sumCos = 0.0f;
-            }
-            break;
-
-        case State::AVERAGING:
-            // 圆周平均，避免 ±pi 边界问题
-            sumSin += sinf(yaw);
-            sumCos += cosf(yaw);
-
-            if ((uint32_t)(now - t0_ms) >= kAvgMs) {
-                const float stableYaw = atan2f(sumSin, sumCos);
-                m_imuOffsetYawAngle   = GSRLMath::normalizeDeltaAngle(stableYaw);
-                m_isIMUCalibrated     = true;
-
-                // 完成后清状态（防止后面误用/重复）
-                started = false;
-            }
-            break;
+    if ((uint32_t)(now - t0_ms) < 357u) return;
+    sumSin += sinf(m_originSmallYawAngle);
+    sumCos += cosf(m_originSmallYawAngle);
+    n++;
+    if (n >= 2) {
+        const float stableYaw = atan2f(sumSin, sumCos);
+        m_imuOffsetYawAngle   = GSRLMath::normalizeDeltaAngle(stableYaw);
+        m_isIMUCalibrated     = true;
+        started               = false;
+        n                     = 0;
+        sumSin = sumCos = 0.0f;
     }
 }
 
@@ -356,7 +335,7 @@ void Gimbal::getIMUAttitude()
 void Gimbal::getTargetAngleFromRemoteControl()
 { 
     m_remoteControl.updateEvent();
-    m_targetAngle += m_remoteControl.getLeftStickX() * DT7_STICK_YAW_SENSITIVITY;
+    m_targetAngle += -m_remoteControl.getLeftStickX() * DT7_STICK_YAW_SENSITIVITY;
     m_targetAngle = GSRLMath::normalizeDeltaAngle(m_targetAngle);
 }
 
@@ -384,11 +363,25 @@ void Gimbal::transmitMotorControlData()
 //调用外部闭环控制接口控制电机
 void Gimbal::setExternalControlTargetAngle(const fp32 bigYawTargetAngle, const fp32 smallYawTargetAngle)
 {
-    fp32 bigYawfdbData[2] = {GSRLMath::normalizeDeltaAngle(m_bigYawRealAngle - bigYawTargetAngle), imu->getGyro().z};
-    m_bigYawMotor->externalClosedloopControl(0.0f, bigYawfdbData, 2);
+    const fp32 gyro_z      = imu->getGyro().z;                             // rad/s（注意单位）
+    const fp32 small_rel_w = m_smallYawMotor->getCurrentAngularVelocity(); // rad/s，小yaw相对大yaw的角速度（同符号约定）
+
+    // 大yaw真实角速度 = IMU角速度 - 小yaw相对角速度
+    const fp32 big_w = gyro_z + small_rel_w;
+
+    fp32 bigYawfdbData[2] = {
+        GSRLMath::normalizeDeltaAngle(m_bigYawRealAngle - bigYawTargetAngle),
+        -big_w // 你原来对 gyro.z 取负号，这里保持同样的反馈约定
+    };
+    
+
+
+    
     // 小云台控制
-    fp32 smallYawfdbData[2] = {GSRLMath::normalizeDeltaAngle(m_smallYawRealAngle - smallYawTargetAngle), imu->getGyro().z};
-    m_smallYawMotor->externalClosedloopControl(0.0f, smallYawfdbData, 2);
+    fp32 smallYawfdbData[2] = {GSRLMath::normalizeDeltaAngle(m_smallYawMotorEncoderAngle - smallYawTargetAngle), -(imu->getGyro().z)};
+    m_bigYawMotor->externalClosedloopControl(0.0f, bigYawfdbData, 2, -(m_smallYawMotor->getControllerOutput() * BIG_YAW_WEIGHT_RATIO));
+    m_smallYawMotor->externalClosedloopControl(0.0f, smallYawfdbData, 2,(m_bigYawMotor->getControllerOutput() * SMALL_YAW_WEIGHT_RATIO));
+    m_smallYawMotorErrorAngle = GSRLMath::normalizeDeltaAngle(m_smallYawRealAngle - smallYawTargetAngle);
 }
 
 void Gimbal::receiveRemoteControlDataFromISR(const uint8_t *rxData)
@@ -404,4 +397,79 @@ void Gimbal::receiveGimbalMotorDataFromISR(const can_rx_message_t *rxMessage)
 {
     if (m_smallYawMotor->decodeCanRxMessageFromISR(rxMessage)) return;
     if (m_bigYawMotor->decodeCanRxMessageFromISR(rxMessage)) return;
+}
+
+/*****************************************大YawPID测试 ******************************************/
+void Gimbal::testForBigYawMotorPID()
+{
+    const fp32 gyro_z      = imu->getGyro().z;            // rad/s（注意单位）
+    const fp32 small_rel_w = m_smallYawMotor->getCurrentAngularVelocity(); // rad/s，小yaw相对大yaw的角速度（同符号约定）
+
+    // 大yaw真实角速度 = IMU角速度 - 小yaw相对角速度
+    const fp32 big_w = gyro_z + small_rel_w;
+
+    fp32 bigYawfdbData[2] = {
+        GSRLMath::normalizeDeltaAngle(m_bigYawRealAngle - m_targetAngle),
+        -big_w // 你原来对 gyro.z 取负号，这里保持同样的反馈约定
+    };
+
+    // m_bigYawMotor->externalClosedloopControl(0.0f, bigYawfdbData, 2);
+    m_smallYawMotor->openloopControl(0);
+}
+
+void Gimbal::sendTsetMessageToPC(const uint8_t sbsbsbsbsbsb,fp32 yaw, fp32 pitch, fp32 roll,fp32 djws)
+{
+    // F1 帧：你自定义 DATA，这里放 3 个 int16（roll/pitch/yaw * 100）
+    uint8_t FRAME_ID = sbsbsbsbsbsb; // 灵活格式帧范围：0xF1~0xFA :contentReference[oaicite:3]{index=3}
+    constexpr uint8_t LEN      = 8;    // 4 * int16 = 8 字节（1~40）:contentReference[oaicite:4]{index=4}
+    constexpr uint16_t TX_LEN  = 4 + LEN + 2;
+
+    uint8_t txData[TX_LEN];
+
+    txData[0] = 0xAA;     // HEAD :contentReference[oaicite:5]{index=5}
+    txData[1] = 0xFF;     // D_ADDR（文档示例使用 0xFF）:contentReference[oaicite:6]{index=6}
+    txData[2] = FRAME_ID; // ID
+    txData[3] = LEN;      // LEN
+
+    int16_t r = (int16_t)lroundf(roll * 100.0f);
+    int16_t p = (int16_t)lroundf(pitch * 100.0f);
+    int16_t y = (int16_t)lroundf(yaw * 100.0f);
+    int16_t t = (int16_t)lroundf(djws * 100.0f); // reserv
+
+
+        // DATA：小端（低字节在前）:contentReference[oaicite:7]{index=7}
+        // DATA：4个 int16（小端），共 8 字节
+    uint16_t ur = (uint16_t)r;
+    uint16_t up     = (uint16_t)p;
+    uint16_t uy     = (uint16_t)y;
+    uint16_t ut     = (uint16_t)t;
+
+    // r -> txData[4], [5]
+    txData[4] = (uint8_t)(ur & 0xFF);        // 低字节
+    txData[5] = (uint8_t)((ur >> 8) & 0xFF); // 高字节
+
+    // p -> txData[6], [7]
+    txData[6] = (uint8_t)(up & 0xFF);
+    txData[7] = (uint8_t)((up >> 8) & 0xFF);
+
+    // y -> txData[8], [9]
+    txData[8] = (uint8_t)(uy & 0xFF);
+    txData[9] = (uint8_t)((uy >> 8) & 0xFF);
+
+    // t -> txData[10], [11]
+    txData[10] = (uint8_t)(ut & 0xFF);
+    txData[11] = (uint8_t)((ut >> 8) & 0xFF);
+
+    // 计算 SC/AC：从 txData[0] 加到 DATA 结束（共 4+LEN 字节）:contentReference[oaicite:8]{index=8}
+    uint16_t sc = 0;
+    uint16_t ac = 0;
+    for (uint8_t i = 0; i < (uint8_t)(4 + LEN); i++) {
+        sc += txData[i];
+        ac += sc;
+    }
+
+    txData[4 + LEN] = sc & 0xFF; // SC
+    txData[5 + LEN] = ac & 0xFF; // AC
+
+    HAL_UART_Transmit(&huart6, txData, TX_LEN, HAL_MAX_DELAY);
 }

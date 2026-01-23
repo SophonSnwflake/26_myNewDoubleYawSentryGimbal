@@ -27,27 +27,28 @@
  *                            PID参数
  ******************************************************************************/
 // 云台大Yaw电机
-#define BIG_YAW_OUTER_KP             15.0f // 外环
-#define BIG_YAW_OUTER_KI             2.0f
-#define BIG_YAW_OUTER_KD             0
-#define BIG_YAW_OUTER_INTEGRAL_LIMIT 0
-#define BIG_YAW_OUTER_OUTPUT_LIMIT   1000000.0f
-#define BIG_YAW_INNER_KP             8.0f // 内环
-#define BIG_YAW_INNER_KI             1
-#define BIG_YAW_INNER_KD             0
-#define BIG_YAW_INNER_OUTPUT_LIMIT   10000000.0f
-#define BIG_YAW_INNER_INTEGRAL_LIMIT 0
+#define BIG_YAW_OUTER_KP             3.25f//外环
+#define BIG_YAW_OUTER_KI             0.5f
+#define BIG_YAW_OUTER_KD             4.0f
+#define BIG_YAW_OUTER_INTEGRAL_LIMIT 200
+#define BIG_YAW_OUTER_OUTPUT_LIMIT   300.0f
+#define BIG_YAW_INNER_KP             100.0f // 内环（已固定）160，  140不错哦👍，感觉120貌似更牛逼了
+#define BIG_YAW_INNER_KI             0.0f
+#define BIG_YAW_INNER_KD             0.0f
+#define BIG_YAW_INNER_INTEGRAL_LIMIT 200
+#define BIG_YAW_INNER_OUTPUT_LIMIT   2000.0f
+
 // 云台小Yaw电机
-#define SMALL_YAW_OUTER_KP             10.0f // 外环
-#define SMALL_YAW_OUTER_KI             0.8f
-#define SMALL_YAW_OUTER_KD             1.0f
+#define SMALL_YAW_OUTER_KP 10.0f // 外环（已固定）
+#define SMALL_YAW_OUTER_KI             0.0f
+#define SMALL_YAW_OUTER_KD             3.0f
 #define SMALL_YAW_OUTER_INTEGRAL_LIMIT 10.0f
-#define SMALL_YAW_OUTER_OUTPUT_LIMIT   100000000000000000000000000000.0f
-#define SMALL_YAW_INNER_KP             550 // 内环
+#define SMALL_YAW_OUTER_OUTPUT_LIMIT   200.0f
+#define SMALL_YAW_INNER_KP             1000.0f // 内环（已固定）1600
 #define SMALL_YAW_INNER_KI             0.0f
-#define SMALL_YAW_INNER_KD             0.5f
-#define SMALL_YAW_INNER_OUTPUT_LIMIT   1000000000000000000000000.0f
-#define SMALL_YAW_INNER_INTEGRAL_LIMIT 11111110.0f
+#define SMALL_YAW_INNER_KD             2.0f
+#define SMALL_YAW_INNER_OUTPUT_LIMIT   1000000000000.0f
+#define SMALL_YAW_INNER_INTEGRAL_LIMIT 1111111.5f
 // 云台Pitch电机
 #define PITCH_OUTER_KP                  15.0f // 外环
 #define PITCH_OUTER_KI                  3.0f
@@ -85,6 +86,8 @@
 #define SMALL_YAW_ORIGIN_ENCODER_OFFSET 0
 #define SMALL_YAW_GEARBOX_RATIO         1
 
+#define BIG_YAW_WEIGHT_RATIO           0.005f
+#define SMALL_YAW_WEIGHT_RATIO         0.2f
 /******************************************************************************
  *                            IMU参数
  ******************************************************************************/
@@ -117,7 +120,7 @@
  ******************************************************************************/
 #define DT7_STICK_DEAD_ZONE         0.05f
 #define DT7_STICK_PITCH_SENSITIVITY 0.02f
-#define DT7_STICK_YAW_SENSITIVITY   0.2f
+#define DT7_STICK_YAW_SENSITIVITY   0.133f
 
 /******************************************************************************
  *                            云台角度限制

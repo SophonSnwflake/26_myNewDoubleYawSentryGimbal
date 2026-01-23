@@ -97,7 +97,11 @@ public:
     fp32 revolutionsClosedloopControl(fp32 targetRevolutions);
     int16_t torqueCurrentClosedloopControl();
     int16_t torqueCurrentClosedloopControl(int16_t targetTorqueCurrent);
-    fp32 externalClosedloopControl(fp32 setPoint, const fp32 *feedBackData, uint8_t feedBackSize);
+    fp32 externalClosedloopControl(fp32 setPoint, const fp32 *feedBackData, uint8_t feedBackSize,fp32 feedForwordData);
+
+    // 新加内容
+    void changeControllerOutput(fp32 outputValue);
+    fp32 getControllerOutput() const;
 
 protected:
     Motor(uint32_t canControlID, uint32_t canFeedbackID, Controller *controller, uint16_t encoderOffset = 0);
