@@ -19,63 +19,43 @@
 
 /* Defines -------------------------------------------------------------------*/
 /******************************************************************************
- *                            CAN ID
- ******************************************************************************/
-#define GIMBAL_TO_CHASSIS_CAN_ID 0x501
-
-/******************************************************************************
  *                            PID参数
  ******************************************************************************/
 // 云台大Yaw电机
-#define BIG_YAW_OUTER_KP             3.25f//外环
-#define BIG_YAW_OUTER_KI             0.5f
-#define BIG_YAW_OUTER_KD             4.0f
-#define BIG_YAW_OUTER_INTEGRAL_LIMIT 200
-#define BIG_YAW_OUTER_OUTPUT_LIMIT   300.0f
-#define BIG_YAW_INNER_KP             100.0f // 内环（已固定）160，  140不错哦👍，感觉120貌似更牛逼了
-#define BIG_YAW_INNER_KI             0.0f
-#define BIG_YAW_INNER_KD             0.0f
-#define BIG_YAW_INNER_INTEGRAL_LIMIT 200
-#define BIG_YAW_INNER_OUTPUT_LIMIT   2000.0f
-
+#define BIG_YAW_OUTER_KP               3.25f
+#define BIG_YAW_OUTER_KI               0.5f
+#define BIG_YAW_OUTER_KD               4.0f
+#define BIG_YAW_OUTER_INTEGRAL_LIMIT   200
+#define BIG_YAW_OUTER_OUTPUT_LIMIT     300.0f
+#define BIG_YAW_INNER_KP               100.0f 
+#define BIG_YAW_INNER_KI               0.0f
+#define BIG_YAW_INNER_KD               0.0f
+#define BIG_YAW_INNER_INTEGRAL_LIMIT   200
+#define BIG_YAW_INNER_OUTPUT_LIMIT     2000.0f
 // 云台小Yaw电机
-#define SMALL_YAW_OUTER_KP 10.0f // 外环（已固定）
+#define SMALL_YAW_OUTER_KP             10.0f // 外环（已固定）
 #define SMALL_YAW_OUTER_KI             0.0f
 #define SMALL_YAW_OUTER_KD             3.0f
 #define SMALL_YAW_OUTER_INTEGRAL_LIMIT 10.0f
 #define SMALL_YAW_OUTER_OUTPUT_LIMIT   200.0f
-#define SMALL_YAW_INNER_KP             1000.0f // 内环（已固定）1600
+#define SMALL_YAW_INNER_KP             1000.0f 
 #define SMALL_YAW_INNER_KI             0.0f
 #define SMALL_YAW_INNER_KD             2.0f
-#define SMALL_YAW_INNER_OUTPUT_LIMIT   1000000000000.0f
+#define SMALL_YAW_INNER_OUTPUT_LIMIT   100000.0f
 #define SMALL_YAW_INNER_INTEGRAL_LIMIT 1111111.5f
 // 云台Pitch电机
-#define PITCH_OUTER_KP                  15.0f // 外环
-#define PITCH_OUTER_KI                  3.0f
+#define PITCH_OUTER_KP 11.0f // 外环11可以78545
+#define PITCH_OUTER_KI                  1.0f
 #define PITCH_OUTER_KD                  0.0f
-#define PITCH_OUTER_OUT_LIMIT           10.0f
+#define PITCH_OUTER_OUT_LIMIT           7.5f
 #define PITCH_OUTER_IOUT_LIMIT          0.5f
-#define PITCH_INNER_KP                  0.65f // 内环
+#define PITCH_INNER_KP                  0.4f 
 #define PITCH_INNER_KI                  0.0f
 #define PITCH_INNER_KD                  0.0f
-#define PITCH_INNER_OUT_LIMIT           10.0f
+#define PITCH_INNER_OUT_LIMIT           2.0f
 #define PITCH_INNER_IOUT_LIMIT          0.0f
+#define PITCH_OUTER_LOWPASS_FILTER_PARA 0.98f
 #define PITCH_INNER_LOWPASS_FILTER_PARA 0.9f
-// 底盘跟随
-#define CHASSIS_FOLLOW_KP 2.0f
-// 摩擦轮
-#define FRICTION_KP         300.0f
-#define FRICTION_KI         10.0f
-#define FRICTION_KD         0.0f
-#define FRICTION_OUT_LIMIT  15000.0f
-#define FRICTION_IOUT_LIMIT 2000.0f
-// 拨弹轮
-#define RAMMER_KP         3000.0f
-#define RAMMER_KI         10.0f
-#define RAMMER_KD         0.0f
-#define RAMMER_OUT_LIMIT  8000.0f
-#define RAMMER_IOUT_LIMIT 1000.0f
-
 /******************************************************************************
  *                            电机参数
  ******************************************************************************/
@@ -85,53 +65,26 @@
 #define LK_SMALL_YAW_MOTOR_ID           2 
 #define SMALL_YAW_ORIGIN_ENCODER_OFFSET 0
 #define SMALL_YAW_GEARBOX_RATIO         1
+#define PITCH_MOTOR_CONTROL_ID          3
 
-#define BIG_YAW_WEIGHT_RATIO           0.005f
-#define SMALL_YAW_WEIGHT_RATIO         0.2f
+#define BIG_YAW_WEIGHT_RATIO            0.005f //大云台对小云台的惯性补偿权重
+#define SMALL_YAW_WEIGHT_RATIO          0.10f  // 小云台对大云台的惯性补偿权重
+#define SMALL_YAW_ZERO_RAD              1.4235 //小云台归中时的原始角度值
+#define PITCH_MOTOR_ORIGIN_ANGLE_RAD    0.0f
 /******************************************************************************
- *                            IMU参数
+ *                            IMU及运动解算参数
  ******************************************************************************/
+//ahrs
 // IMU校准
-#define CYCYLING_TIMES_FOR_IMU_CALIBRATION 500
-#define SMALL_YAW_ZERO_RAD                 1.4235
-#define RATING_OF_IMU                      0.05f//IMU增长率阈值
-
-
-// Mahony算法参数
-#define AHRS_AUTO_FREQ      0
-#define AHRS_DEFAULT_FILTER 0
-#define MAHONY_KP           0.8f
-#define MAHONY_KI           0.0f
-// IMU零飘补偿
-#define GYRO_OFFSET_X  0.0f
-#define GYRO_OFFSET_Y  0.0f
-#define GYRO_OFFSET_Z  0.0f
-#define ACCEL_OFFSET_X 0.0f
-#define ACCEL_OFFSET_Y 0.0f
-#define ACCEL_OFFSET_Z 0.0f
-#define MAG_OFFSET_X   0.0f
-#define MAG_OFFSET_Y   0.0f
-#define MAG_OFFSET_Z   0.0f
-// 安装朝向修正旋转矩阵
-#define INSTALL_SPIN_MATRIX GSRLMath::Matrix33f::MatrixType::IDENTITY
-
+#define IMU_CALIBRATION_WAITING_TIMES 357u // IMU校准等待循环次数
+#define IMU_CALIBRATION_STATISTICSING_TIMES 3u // IMU校准统计循环次数
 /******************************************************************************
- *                            遥控器灵敏度与死区
+ *                            遥控器灵敏度
  ******************************************************************************/
-#define DT7_STICK_DEAD_ZONE         0.05f
-#define DT7_STICK_PITCH_SENSITIVITY 0.02f
+#define DT7_STICK_PITCH_SENSITIVITY 0.05f
 #define DT7_STICK_YAW_SENSITIVITY   0.133f
-
 /******************************************************************************
  *                            云台角度限制
  ******************************************************************************/
-#define PITCH_UPPER_LIMIT 0.2f
-#define PITCH_LOWER_LIMIT -0.35f
-/******************************************************************************
- *                            发射机构参数
- ******************************************************************************/
-#define FRICTION_TARGET_ANGULAR_VELOCITY     720.0f
-#define RAMMER_TARGET_ANGULAR_VELOCITY       2.0f * MATH_PI
-#define RAMMER_STUCK_TIMEOUT                 1.0f
-#define RAMMER_REVERT_TIME                   2.0f
-#define RAMMER_STUCK_REVERT_ANGULAR_VELOCITY 1.0f * MATH_PI
+#define PITCH_UPPER_LIMIT 0.506f
+#define PITCH_LOWER_LIMIT -0.32f

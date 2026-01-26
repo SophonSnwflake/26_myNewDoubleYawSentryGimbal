@@ -1,5 +1,5 @@
 version: "4.1"
-name: hero_gimbal
+name: sentry_gimbal
 type: ARM
 deviceName: STM32F407IGHx
 packDir: .pack/Keil/STM32F4xx_DFP.2.17.1
@@ -173,7 +173,7 @@ outDir: build
 miscInfo:
   uid: 890a0eef8839ded0f93c01c9bc3cf55b
 targets:
-  hero_gimbal:
+  sentry_gimbal:
     cppPreprocessAttrs:
       defineList:
         - USE_HAL_DRIVER
@@ -192,7 +192,7 @@ targets:
         - CubeMX_BSP/Drivers/CMSIS/Device/ST/STM32F4xx/Include
         - CubeMX_BSP/Drivers/CMSIS/Include
         - .cmsis/include
-        - CubeMX_BSP/MDK-ARM/RTE/_hero_gimbal
+        - CubeMX_BSP/MDK-ARM/RTE/_sentry_gimbal
         - GSRL/Dependence/CMSIS-DSP/Include
         - GSRL/Dependence/CMSIS-DSP/PrivateInclude
         - GSRL/Driver/inc

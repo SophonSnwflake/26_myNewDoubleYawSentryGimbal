@@ -12,10 +12,12 @@
  */
 /* Includes ------------------------------------------------------------------*/
 #include "Define/def_bmi088.h"
+#include "alg_filter.hpp"
 #include "alg_pid.hpp"
 #include "crt_gimbal.hpp"
 #include "dvc_motor.hpp"
 #include "dvc_imu.hpp"
+#include "para_gimbal.hpp"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846f
@@ -55,12 +57,29 @@ CascadePID ::PIDParam smallYawInnerSpeedPIDParam = {
     SMALL_YAW_INNER_OUTPUT_LIMIT,
     SMALL_YAW_INNER_INTEGRAL_LIMIT};
 
+CascadePID ::PIDParam pitchOuterAnglePIDParam = {
+    // pitchPID参数
+    PITCH_OUTER_KP,
+    PITCH_OUTER_KI,
+    PITCH_OUTER_KD,
+    PITCH_OUTER_OUT_LIMIT,
+    PITCH_OUTER_IOUT_LIMIT};
+CascadePID ::PIDParam pitchInnerSpeedPIDParam = {
+    PITCH_INNER_KP,
+    PITCH_INNER_KI,
+    PITCH_INNER_KD,
+    PITCH_INNER_OUT_LIMIT,
+    PITCH_INNER_IOUT_LIMIT};
 CascadePID bigYawPID(bigYawOuterAnglePIDParam, bigYawInnerSpeedPIDParam, nullptr, nullptr);
 CascadePID smallYawPID(smallYawOuterAnglePIDParam, smallYawInnerSpeedPIDParam, nullptr, nullptr);
+LowPassFilter<fp32> pitchOuterLPF(PITCH_OUTER_LOWPASS_FILTER_PARA);
+LowPassFilter<fp32> pitchInnerLPF(PITCH_INNER_LOWPASS_FILTER_PARA);
+CascadePID pitchPID(pitchOuterAnglePIDParam, pitchInnerSpeedPIDParam, &pitchOuterLPF, &pitchInnerLPF);
 
 /* Motor ---------------------------------------------*/
 MotorLKMG bigYawMotor(LK_BIG_YAW_MOTOR_ID, &bigYawPID, BIG_YAW_ORIGIN_ENCODER_OFFSET, BIG_YAW_GEARBOX_RATIO);
 MotorGM6020 smallYawMotor(LK_SMALL_YAW_MOTOR_ID, &smallYawPID, SMALL_YAW_ORIGIN_ENCODER_OFFSET);
+MotorDM4310 pitchMotor(PITCH_MOTOR_CONTROL_ID, PITCH_MOTOR_CONTROL_ID + 0x10, 3.141593, 40.0f, 15.0f, &pitchPID);
 
 /******************************************************************************
  *                            IMU相关
@@ -81,9 +100,6 @@ BMI088::CalibrationInfo cali = {
     {0.0f, 0.0f, 0.0f}, // magnetOffset
     {GSRLMath::Matrix33f::MatrixType::IDENTITY}};
 
-// BMI088::SPIConfig accel{hspi1, GPIOA, GPIO_PIN_4};
-// BMI088::SPIConfig gyro{hspi1, GPIOB, GPIO_PIN_0};
-
 BMI088 imu(&myahrs,
            {&hspi1, GPIOA, GPIO_PIN_4},
            {&hspi1, GPIOB, GPIO_PIN_0},
@@ -91,20 +107,17 @@ BMI088 imu(&myahrs,
            nullptr,  // errorCallback（如果它是函数指针/可为空类型）
            nullptr); // magnet
 
-Gimbal gimbal(&bigYawMotor, &smallYawMotor, &imu);
+Gimbal gimbal(&bigYawMotor, &smallYawMotor, &pitchMotor, &imu);
 /* Variables -----------------------------------------------------------------*/
 
 /* Function prototypes -------------------------------------------------------*/
 
 /* User code -----------------------------------------------------------------*/
 
-fp32 Angle;
-
 extern "C" void gimbal_task(void *argument)
 {
     TickType_t taskLastWakeTime = xTaskGetTickCount(); // 获取任务开始时间
     gimbal.init();
-    while(1)
     while (1){
         gimbal.controlLoop();
         vTaskDelayUntil(&taskLastWakeTime, 5); // 确保任务以定周期5ms运行
